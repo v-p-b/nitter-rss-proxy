@@ -507,7 +507,7 @@ func rewriteContent(s string, loc *url.URL) (string, error) {
 	}
 
 	// Match all remaining URLs served by the instance and change them to use twitter.com:
-	// https://github.com/derat/nitter-rss-proxy/issues/13
+	// https://codeberg.org/derat/nitter-rss-proxy/issues/13
 	if loc != nil {
 		// Match both http:// and https:// since some instances seem to be configured
 		// to always use http:// for links.

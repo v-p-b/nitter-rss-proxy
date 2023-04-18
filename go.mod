@@ -1,4 +1,4 @@
-module github.com/derat/nitter-rss-proxy
+module codeberg.org/derat/nitter-rss-proxy
 
 go 1.14
 
