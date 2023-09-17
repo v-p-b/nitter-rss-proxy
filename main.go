@@ -223,8 +223,12 @@ func (hnd *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		query = req.URL.RawQuery
 	}
 
-	for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
+	if hnd.opts.statusApi == true && len(hnd.instances) == 0 {
 		fetchStatus(hnd)
+		if len(hnd.instances) == 0 {
+			http.Error(w, "No instances", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	start := hnd.start
