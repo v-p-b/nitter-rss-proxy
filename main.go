@@ -121,7 +121,7 @@ type StatusResponse struct {
 	Hosts []HostStatus
 }
 
-func fetchStatus(hnd *handler, opts handlerOptions) {
+func fetchStatus(hnd *handler) {
 	resp, err := hnd.client.Get("https://status.d420.de/api/v1/instances")
 	if err != nil {
 		fmt.Println("Couldn't fetch status API")
@@ -140,7 +140,6 @@ func fetchStatus(hnd *handler, opts handlerOptions) {
 
 	var statusResponse StatusResponse
 	err = json.Unmarshal(body, &statusResponse)
-	fmt.Println(statusResponse)
 	if err != nil {
 		fmt.Println("Can't unmarshal status API \n%s", err)
 		return
@@ -183,7 +182,7 @@ func newHandler(base, instances string, opts handlerOptions) (*handler, error) {
 	}
 	if opts.statusApi {
 		fmt.Println("Fetching status API")
-		fetchStatus(hnd, opts)
+		fetchStatus(hnd)
 	}
 	if len(hnd.instances) == 0 {
 		return nil, errors.New("no instances supplied")
@@ -231,12 +230,22 @@ func (hnd *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		hnd.mu.Unlock()
 	}
 
+    for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
+        fetchStatus(hnd)
+    }
+
 	for i := 0; i < len(hnd.instances); i++ {
-		in := hnd.instances[(start+i)%len(hnd.instances)]
+        idx := (start+i)%len(hnd.instances)
+		in := hnd.instances[idx]
 		b, loc, minID, err := hnd.fetch(in, user, query)
 		if err != nil {
 			log.Printf("Failed fetching %v from %v: %v", user, in, err)
-			continue
+            if hnd.opts.statusApi == true {
+                hnd.instances[idx]=hnd.instances[len(hnd.instances)-1]
+                hnd.instances = hnd.instances[:len(hnd.instances)-1]
+                fmt.Println(hnd.instances)
+            }
+		    continue
 		}
 		w.Header().Set(minIDHeader, minID)
 		if err := hnd.rewrite(w, b, user, loc); err != nil {
