@@ -223,15 +223,15 @@ func (hnd *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		query = req.URL.RawQuery
 	}
 
+	for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
+		fetchStatus(hnd)
+	}
+
 	start := hnd.start
 	if hnd.opts.cycle {
 		hnd.mu.Lock()
 		hnd.start = (hnd.start + 1) % len(hnd.instances)
 		hnd.mu.Unlock()
-	}
-
-	for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
-		fetchStatus(hnd)
 	}
 
 	for i := 0; i < len(hnd.instances); i++ {
