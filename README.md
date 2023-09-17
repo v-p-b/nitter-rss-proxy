@@ -1,6 +1,6 @@
 # nitter-rss-proxy
 
-[![Build Status](https://storage.googleapis.com/derat-build-badges/e06fdbf3-0063-447a-9e33-6a1c1b583941.svg)](https://storage.googleapis.com/derat-build-badges/e06fdbf3-0063-447a-9e33-6a1c1b583941.html)
+**This is a fork of the original hosted at https://codeberg.org/derat/nitter-rss-proxy with added support for fetching instance URLs from status.d420.de**
 
 [Twitter stopped providing RSS feeds] in 2011. [Nitter], an alternate Twitter
 frontend, [serves ATOM feeds], and there are various [public Nitter instances].
