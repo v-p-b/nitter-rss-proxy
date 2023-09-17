@@ -230,22 +230,22 @@ func (hnd *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		hnd.mu.Unlock()
 	}
 
-    for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
-        fetchStatus(hnd)
-    }
+	for hnd.opts.statusApi == true && len(hnd.instances) == 0 {
+		fetchStatus(hnd)
+	}
 
 	for i := 0; i < len(hnd.instances); i++ {
-        idx := (start+i)%len(hnd.instances)
+		idx := (start + i) % len(hnd.instances)
 		in := hnd.instances[idx]
 		b, loc, minID, err := hnd.fetch(in, user, query)
 		if err != nil {
 			log.Printf("Failed fetching %v from %v: %v", user, in, err)
-            if hnd.opts.statusApi == true {
-                hnd.instances[idx]=hnd.instances[len(hnd.instances)-1]
-                hnd.instances = hnd.instances[:len(hnd.instances)-1]
-                fmt.Println(hnd.instances)
-            }
-		    continue
+			if hnd.opts.statusApi == true {
+				hnd.instances[idx] = hnd.instances[len(hnd.instances)-1]
+				hnd.instances = hnd.instances[:len(hnd.instances)-1]
+				fmt.Println(hnd.instances)
+			}
+			continue
 		}
 		w.Header().Set(minIDHeader, minID)
 		if err := hnd.rewrite(w, b, user, loc); err != nil {
