@@ -50,6 +50,7 @@ func main() {
 	fastCGI := flag.Bool("fastcgi", false, "Use FastCGI instead of listening on -addr")
 	format := flag.String("format", "atom", `Feed format to write ("atom", "json", "rss")`)
 	instances := flag.String("instances", "https://nitter.net", "Comma-separated list of URLs of Nitter instances to use")
+	status := flag.Bool("status", false, "Use Nitter status API to configure instances")
 	flag.BoolVar(&opts.rewrite, "rewrite", true, "Rewrite tweet content to point at twitter.com")
 	timeout := flag.Int("timeout", 10, "HTTP timeout in seconds for fetching a feed from a Nitter instance")
 	user := flag.String("user", "", "User to fetch to stdout (instead of starting a server)")
@@ -57,6 +58,7 @@ func main() {
 
 	opts.format = feedFormat(*format)
 	opts.timeout = time.Duration(*timeout) * time.Second
+	opts.statusApi = *status
 
 	hnd, err := newHandler(*base, *instances, opts)
 	if err != nil {
@@ -94,8 +96,67 @@ type handlerOptions struct {
 	format       feedFormat
 	rewrite      bool // rewrite tweet content to point at Twitter
 	debugAuthors bool // log per-author tweet counts
+	statusApi    bool
 }
 
+type HostStatus struct {
+	Url               string
+	Domain            string
+	Points            int
+	Rss               bool
+	Recent_pings      []int
+	Ping_max          int
+	Ping_min          int
+	Ping_avg          int
+	Version           string
+	Version_url       string
+	Healthy           bool
+	Last_healthy      string
+	Is_upstream       bool
+	Is_latest_version bool
+	Is_bad_host       bool
+}
+
+type StatusResponse struct {
+	Hosts []HostStatus
+}
+
+func fetchStatus(hnd *handler, opts handlerOptions) {
+	resp, err := hnd.client.Get("https://status.d420.de/api/v1/instances")
+	if err != nil {
+		fmt.Println("Couldn't fetch status API")
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Bad response code from status API")
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Can't read status API")
+		return
+	}
+
+	var statusResponse StatusResponse
+	err = json.Unmarshal(body, &statusResponse)
+	fmt.Println(statusResponse)
+	if err != nil {
+		fmt.Println("Can't unmarshal status API \n%s", err)
+		return
+	}
+	for _, h := range statusResponse.Hosts {
+		u, uerr := url.Parse(h.Url)
+		if uerr != nil {
+			fmt.Println("Bad URL", h.Url)
+			continue
+		}
+		if h.Is_bad_host == false && h.Rss == true && h.Healthy == true {
+			hnd.instances = append(hnd.instances, u)
+			fmt.Println("Added ", h.Url)
+		}
+	}
+}
 func newHandler(base, instances string, opts handlerOptions) (*handler, error) {
 	hnd := &handler{
 		client: http.Client{Timeout: opts.timeout},
@@ -119,6 +180,10 @@ func newHandler(base, instances string, opts handlerOptions) (*handler, error) {
 			return nil, fmt.Errorf("failed parsing %q: %v", in, err)
 		}
 		hnd.instances = append(hnd.instances, u)
+	}
+	if opts.statusApi {
+		fmt.Println("Fetching status API")
+		fetchStatus(hnd, opts)
 	}
 	if len(hnd.instances) == 0 {
 		return nil, errors.New("no instances supplied")
